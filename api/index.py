@@ -6,16 +6,14 @@ import os
 
 app = FastAPI()
 
-# Allow frontend to call this backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace with your Vercel URL after deploy e.g. ["https://blog-cms.vercel.app"]
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Your Groq API key - stored safely on the server
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -93,9 +91,9 @@ async def generate_blog(req: BlogRequest):
     if not GROQ_API_KEY:
         raise HTTPException(status_code=500, detail="API key not configured on server")
 
-    # Clean up topic
     topic = req.topic.strip()
-    prefixes = ["write a blog about", "write blog about", "blog about", "write about", "blog on", "create a blog about"]
+    prefixes = ["write a blog about", "write blog about", "blog about",
+                "write about", "blog on", "create a blog about"]
     for p in prefixes:
         if topic.lower().startswith(p):
             topic = topic[len(p):].strip()
@@ -128,10 +126,11 @@ async def generate_blog(req: BlogRequest):
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(GROQ_URL, json=payload, headers=headers)
             data = response.json()
-
             if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail=data.get("error", {}).get("message", "Groq API error"))
-
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=data.get("error", {}).get("message", "Groq API error")
+                )
             content = data["choices"][0]["message"]["content"]
             return {"content": content, "topic": topic}
 
