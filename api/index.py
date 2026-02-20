@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import httpx
 import os
@@ -9,7 +10,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -86,6 +87,18 @@ def health():
     return {"status": "ok", "model": GROQ_MODEL}
 
 
+@app.options("/generate")
+async def options_generate():
+    return JSONResponse(
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        }
+    )
+
+
 @app.post("/generate")
 async def generate_blog(req: BlogRequest):
     if not GROQ_API_KEY:
@@ -132,7 +145,10 @@ async def generate_blog(req: BlogRequest):
                     detail=data.get("error", {}).get("message", "Groq API error")
                 )
             content = data["choices"][0]["message"]["content"]
-            return {"content": content, "topic": topic}
+            return JSONResponse(
+                content={"content": content, "topic": topic},
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
 
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Request timed out. Please try again.")
